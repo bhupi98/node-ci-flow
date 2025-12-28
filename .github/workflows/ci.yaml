@@ -1,4 +1,4 @@
-name: Node.js CI - Build & Push Docker Image
+name: Node.js CI - Build & Push Versioned Docker Image
 
 on:
   push:
@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repository
+      # 1️⃣ Checkout code
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -36,12 +36,19 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 6️⃣ Build Docker image
+      # 6️⃣ Set image tag (Git commit SHA)
+      - name: Set image tag
+        run: echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      # 7️⃣ Build Docker image (versioned + latest)
       - name: Build Docker image
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/node-ci-flow:latest .
+          docker build \
+            -t ${{ secrets.DOCKER_USERNAME }}/node-ci-flow:${IMAGE_TAG} \
+            -t ${{ secrets.DOCKER_USERNAME }}/node-ci-flow:latest .
 
-      # 7️⃣ Push Docker image
-      - name: Push Docker image
+      # 8️⃣ Push Docker images
+      - name: Push Docker images
         run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/node-ci-flow:${IMAGE_TAG}
           docker push ${{ secrets.DOCKER_USERNAME }}/node-ci-flow:latest

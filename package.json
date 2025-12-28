@@ -4,7 +4,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "echo \"Tests passed\""
+    "test": "echo \"Tests passed\"",
+    "lint": "eslint ."
   },
   "keywords": [],
   "author": "",

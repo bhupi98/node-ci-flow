@@ -1,4 +1,4 @@
-name: Node.js CI - Build & Push Versioned Docker Image
+name: Node.js CI - Lint, Security, Build & Push
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  build-and-push:
+  build-and-secure:
     runs-on: ubuntu-latest
 
     steps:
@@ -25,29 +25,45 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # 4️⃣ Run tests
+      # 4️⃣ Run ESLint
+      - name: Run ESLint
+        run: npm run lint
+
+      # 5️⃣ Run tests
       - name: Run tests
         run: npm test
 
-      # 5️⃣ Login to Docker Hub
+      # 6️⃣ Dependency security scan
+      - name: NPM Audit (High severity only)
+        run: npm audit --audit-level=high
+
+      # 7️⃣ Login to Docker Hub
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 6️⃣ Set image tag (Git commit SHA)
+      # 8️⃣ Set image tag (commit SHA)
       - name: Set image tag
         run: echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
 
-      # 7️⃣ Build Docker image (versioned + latest)
+      # 9️⃣ Build Docker image
       - name: Build Docker image
         run: |
           docker build \
             -t ${{ secrets.DOCKER_USERNAME }}/node-ci-flow:${IMAGE_TAG} \
             -t ${{ secrets.DOCKER_USERNAME }}/node-ci-flow:latest .
 
-      # 8️⃣ Push Docker images
+      # 🔟 Docker image security scan (Trivy)
+      - name: Scan Docker image for vulnerabilities
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          image-ref: ${{ secrets.DOCKER_USERNAME }}/node-ci-flow:${IMAGE_TAG}
+          severity: HIGH,CRITICAL
+          exit-code: 1
+
+      # 1️⃣1️⃣ Push Docker images
       - name: Push Docker images
         run: |
           docker push ${{ secrets.DOCKER_USERNAME }}/node-ci-flow:${IMAGE_TAG}
